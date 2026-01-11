@@ -1,54 +1,58 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import TradingCard from "../components/TradingCard";
 import LoadingSpinner from "../components/LoadingSpinner";
 import Settings from "../components/Settings";
-
-const BACKEND_URL = "https://ai-1-trading-backend.vercel.app/api/signal";
+import OTCDataReader from "../components/OTCDataReader";
+import ResultPopup from "../components/ResultPopup";
+import { saveSignalResult, loadSignalHistory } from "../utils/mlEngine";
 
 const Home = () => {
   const [signals, setSignals] = useState([]);
+  const [otcData, setOtcData] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
+  const [currentPopup, setCurrentPopup] = useState(null);
 
-  const fetchSignals = async () => {
+  const fetchSignals = async (otcSnapshot = []) => {
     setLoading(true);
-    setError(null);
-
     try {
-      const res = await fetch(BACKEND_URL, {
+      const res = await fetch("/api/signal", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({})
+        body: JSON.stringify({ otc: otcSnapshot }),
       });
-
       const data = await res.json();
       setSignals(data.signals || []);
+      if (data.signals.length > 0) setCurrentPopup(data.signals[0]);
     } catch (err) {
-      setError("Failed to fetch signals");
       console.error(err);
     } finally {
       setLoading(false);
     }
   };
 
+  const handleResult = (signal, isWin) => {
+    saveSignalResult(signal, isWin);
+    const nextSignal = signals.find(s => s.asset !== signal.asset);
+    setCurrentPopup(nextSignal || null);
+  };
+
+  useEffect(() => {
+    if (otcData.length > 0) fetchSignals(otcData);
+  }, [otcData]);
+
   return (
     <div className="home-container">
       <h1>Ultimate AI Trading Signals</h1>
-
       <Settings />
-
-      <button onClick={fetchSignals} className="generate-btn">
-        Generate Signals
-      </button>
-
-      {loading && <LoadingSpinner />}
-      {error && <p style={{ color: "red" }}>{error}</p>}
-
-      <div className="signals-grid">
-        {signals.map((signal, idx) => (
-          <TradingCard key={idx} data={signal} />
-        ))}
-      </div>
+      <OTCDataReader onData={setOtcData} />
+      {loading ? <LoadingSpinner /> : (
+        <div className="signals-grid">
+          {signals.map((signal, idx) => (
+            <TradingCard key={idx} data={signal} />
+          ))}
+        </div>
+      )}
+      <ResultPopup signal={currentPopup} onSubmit={handleResult} />
     </div>
   );
 };
