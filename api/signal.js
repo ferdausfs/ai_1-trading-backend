@@ -50,4 +50,4 @@ export default function handler(req, res) {
 
   // ✅ Return result
   return res.status(200).json({ signals });
-}
+} 
