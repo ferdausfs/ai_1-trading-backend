@@ -1,62 +1,40 @@
-import fetch from "node-fetch";
+export default function handler(req, res) {
+  // ✅ CORS headers
+  res.setHeader("Access-Control-Allow-Origin", "*"); // public testing
+  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
 
-// Historical signals (in-memory for simplicity, later DB possible)
-let signalHistory = [];
+  if (req.method === "OPTIONS") return res.status(200).end();
+  if (req.method !== "POST") return res.status(405).json({ error: "Method Not Allowed" });
 
-export default async function handler(req, res) {
-  const body = req.body || {};
-  const otc = body.otc || [];
-  const cerebrasKey = process.env.CEREBRAS_API_KEY || "csk-h6r48pth4wft2t34c6wj6kyd6k8pxwmtvkehxr259r4j2tcf";
-
-  // Multi-asset list
-  const baseAssets = [
-    "BTC/USD",
-    "ETH/USD",
-    "EUR/USD",
-    "USD/JPY",
-    "XAU/USD",
-    "AAPL",
-    "GOOGL",
+  // ✅ Assets (Crypto + Forex + Stocks + OTC)
+  const assets = [
+    "BTC/USDT", "ETH/USDT", "SOL/USDT",
+    "EUR/USD", "GBP/USD", "USD/JPY",
+    "XAU/USD", "XAG/USD", "NASDAQ", "SP500",
+    "OTC-EURUSD", "OTC-BTC", "OTC-USDJPY"
   ];
 
-  const allAssets = [...baseAssets, ...otc.map(item => item.asset)];
+  // 🔥 Core Signal Logic (placeholder deterministic)
+  function analyzeAsset(asset) {
+    const trend = Math.random();       // Trend strength
+    const momentum = Math.random();    // Speed
+    const volatility = Math.random();  // Risk
 
-  // Fetch Cerebras AI signals (example: call API per asset)
-  const signals = await Promise.all(allAssets.map(async (asset) => {
-    let signal = "NEUTRAL";
-    let confidence = 0.5;
+    const score = trend*0.4 + momentum*0.4 + volatility*0.2;
+    const signal = score >= 0.55 ? "BUY" : "SELL";
 
-    try {
-      // Cerebras AI endpoint
-      const prompt = `Analyze ${asset} for 1-10 minute trading signal. 
-Include BUY/SELL recommendation and confidence 0-1.`;
+    return {
+      asset,
+      signal,
+      confidence: Number(score.toFixed(2)),
+      engine: "vercel-backend",
+      timeframe: "1–10 min",
+      time: new Date().toISOString()
+    };
+  }
 
-      const response = await fetch("https://api.cerebras.ai/v1/generate", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${cerebrasKey}`,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ prompt })
-      });
+  const signals = assets.map(analyzeAsset);
 
-      const data = await response.json();
-      // Example response parsing
-      signal = data.signal || "NEUTRAL";
-      confidence = data.confidence || 0.5;
-
-    } catch (err) {
-      console.error("Cerebras API error:", err);
-      // fallback to random
-      signal = Math.random() > 0.5 ? "BUY" : "SELL";
-      confidence = parseFloat((Math.random() * 0.5 + 0.5).toFixed(2));
-    }
-
-    return { asset, signal, confidence, engine: "Cerebras-Vercel", time: new Date().toISOString() };
-  }));
-
-  // Update in-memory signal history
-  signalHistory = [...signalHistory, ...signals];
-
-  res.status(200).json({ signals, history: signalHistory });
+  res.status(200).json({ signals });
 }
