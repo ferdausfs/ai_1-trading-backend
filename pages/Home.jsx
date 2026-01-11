@@ -15,10 +15,11 @@ const Home = () => {
   const fetchSignals = async (otcSnapshot = []) => {
     setLoading(true);
     try {
-      const res = await fetch("/api/signal", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ otc: otcSnapshot }),
+      const res = await fetch("https://ai-1-trading-backend.vercel.app/api/signal", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({ otc: otcSnapshot }),
+});
       });
       const data = await res.json();
       setSignals(data.signals || []);
