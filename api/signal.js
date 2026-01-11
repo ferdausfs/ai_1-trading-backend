@@ -1,20 +1,39 @@
 export default function handler(req, res) {
-  if (req.method === 'POST') {
-    const { asset, timeframe, indicators } = req.body;
+  const assets = [
+    // Crypto
+    "BTC/USDT",
+    "ETH/USDT",
+    "SOL/USDT",
 
-    // Dummy signal logic
-    const signal = Math.random() > 0.5 ? "BUY" : "SELL";
-    const confidence = (Math.random() * 0.5 + 0.5).toFixed(2);
+    // Forex
+    "EUR/USD",
+    "GBP/USD",
+    "USD/JPY",
 
-    res.status(200).json({
+    // Commodities
+    "XAU/USD",
+    "XAG/USD",
+
+    // Indices
+    "NASDAQ",
+    "SP500",
+
+    // OTC (manual)
+    "OTC-EURUSD",
+    "OTC-BTC"
+  ];
+
+  const signals = assets.map(asset => {
+    const r = Math.random();
+    return {
       asset,
-      timeframe,
-      signal,
-      confidence: parseFloat(confidence),
+      signal: r > 0.55 ? "BUY" : "SELL",
+      confidence: +(0.6 + Math.random() * 0.35).toFixed(2),
       engine: "vercel-backend",
+      timeframe: "1–10 min",
       time: new Date().toISOString()
-    });
-  } else {
-    res.status(405).json({ error: "Method Not Allowed" });
-  }
+    };
+  });
+
+  res.status(200).json({ signals });
 }
