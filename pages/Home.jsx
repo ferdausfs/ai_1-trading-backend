@@ -3,42 +3,35 @@ import TradingCard from "../components/TradingCard";
 import LoadingSpinner from "../components/LoadingSpinner";
 import Settings from "../components/Settings";
 import OTCDataReader from "../components/OTCDataReader";
-import ResultPopup from "../components/ResultPopup";
-import { saveSignalResult, loadSignalHistory } from "../utils/mlEngine";
+
+const BACKEND_URL = "https://ai-1-trading-backend.vercel.app/api/signal"; // your Vercel URL
 
 const Home = () => {
   const [signals, setSignals] = useState([]);
   const [otcData, setOtcData] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [currentPopup, setCurrentPopup] = useState(null);
 
   const fetchSignals = async (otcSnapshot = []) => {
     setLoading(true);
     try {
-      const res = await fetch("https://ai-1-trading-backend.vercel.app/api/signal", {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({ otc: otcSnapshot }),
-});
+      const res = await fetch(BACKEND_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ otc: otcSnapshot })
       });
       const data = await res.json();
       setSignals(data.signals || []);
-      if (data.signals.length > 0) setCurrentPopup(data.signals[0]);
     } catch (err) {
-      console.error(err);
+      console.error("Error fetching signals:", err);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleResult = (signal, isWin) => {
-    saveSignalResult(signal, isWin);
-    const nextSignal = signals.find(s => s.asset !== signal.asset);
-    setCurrentPopup(nextSignal || null);
-  };
-
   useEffect(() => {
-    if (otcData.length > 0) fetchSignals(otcData);
+    fetchSignals(otcData); // initial fetch
+    const interval = setInterval(() => fetchSignals(otcData), 60000); // 1-min interval
+    return () => clearInterval(interval);
   }, [otcData]);
 
   return (
@@ -48,12 +41,9 @@ const Home = () => {
       <OTCDataReader onData={setOtcData} />
       {loading ? <LoadingSpinner /> : (
         <div className="signals-grid">
-          {signals.map((signal, idx) => (
-            <TradingCard key={idx} data={signal} />
-          ))}
+          {signals.map((signal, idx) => <TradingCard key={idx} data={signal} />)}
         </div>
       )}
-      <ResultPopup signal={currentPopup} onSubmit={handleResult} />
     </div>
   );
 };
